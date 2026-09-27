@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>ICU 每日查房</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF1F0; --surface:#FFFFFF; --surface-2:#F5F8F7; --ink:#14212A; --muted:#55666D; --line:#D2DBDA;
+  --accent:#0B6E69; --accent-ink:#FFFFFF; --accent-soft:#DCEEEC;
+  --ok:#2A7549; --ok-soft:#E0F0E6; --warn:#9A5700; --warn-soft:#FAEBD3; --crit:#B42318; --crit-soft:#FBE2DE;
+  --strip:#12202A; --strip-ink:#E6EEF0; --strip-muted:#93A7AF; --strip-line:#2B3D47; --strip-accent:#43C4B8;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-label:"IBM Plex Sans Condensed","Noto Sans TC","Arial Narrow",sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0B1114; --surface:#131C20; --surface-2:#182328; --ink:#E2EAEC; --muted:#93A4AA; --line:#26353B;
+    --accent:#3CBDB2; --accent-ink:#06201E; --accent-soft:#12332F;
+    --ok:#5CC48E; --ok-soft:#12301F; --warn:#F0AA45; --warn-soft:#352409; --crit:#F2685F; --crit-soft:#3A1512;
+    --strip:#070D10; --strip-ink:#E2EAEC; --strip-muted:#8397A0; --strip-line:#223139; --strip-accent:#43C4B8;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0B1114; --surface:#131C20; --surface-2:#182328; --ink:#E2EAEC; --muted:#93A4AA; --line:#26353B;
+  --accent:#3CBDB2; --accent-ink:#06201E; --accent-soft:#12332F;
+  --ok:#5CC48E; --ok-soft:#12301F; --warn:#F0AA45; --warn-soft:#352409; --crit:#F2685F; --crit-soft:#3A1512;
+  --strip:#070D10; --strip-ink:#E2EAEC; --strip-muted:#8397A0; --strip-line:#223139; --strip-accent:#43C4B8;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+h1,h2,h3{margin:0;text-wrap:balance;line-height:1.3}
+p{margin:0}
+a{color:var(--accent)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:16px}
+.label{font-family:var(--f-label);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+
+/* strip */
+.strip{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--strip);color:var(--strip-ink);border-bottom:1px solid var(--strip-line)}
+.top{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center;justify-content:space-between;padding-block:10px 8px}
+.brand h1{font-family:var(--f-label);font-size:20px;font-weight:700}
+.brand p{font-size:12px;color:var(--strip-muted)}
+.datectl{display:flex;gap:6px;align-items:center}
+.datectl input{background:transparent;border:1px solid var(--strip-line);border-radius:6px;padding:5px 8px;color:var(--strip-ink);font-family:var(--f-num);font-size:14px;color-scheme:dark}
+.sbtn{background:transparent;border:1px solid var(--strip-line);color:var(--strip-ink);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:14px}
+.sbtn:hover{border-color:var(--strip-accent)}
+.viewtg{display:inline-flex;border:1px solid var(--strip-line);border-radius:8px;overflow:hidden}
+.viewtg button{background:transparent;border:0;color:var(--strip-ink);padding:6px 14px;cursor:pointer;font-weight:500}
+.viewtg button[aria-pressed="true"]{background:var(--strip-accent);color:#06201E}
+.beds-scroll{overflow-x:auto;padding-bottom:10px}
+.beds{display:flex;gap:6px;width:max-content;min-width:100%}
+.bedbtn{display:grid;justify-items:center;gap:3px;min-width:46px;padding:5px 6px 6px;border-radius:8px;border:1px solid var(--strip-line);background:transparent;color:var(--strip-ink);cursor:pointer;font-family:var(--f-num);font-weight:700;font-size:15px}
+.bedbtn[aria-current="true"]{background:var(--strip-ink);color:var(--strip);border-color:var(--strip-ink)}
+.bedbtn i{width:18px;height:4px;border-radius:2px;background:var(--strip-line)}
+.bedbtn.s-ok i{background:#5CC48E}.bedbtn.s-todo i{background:#F0AA45}.bedbtn.s-fail i{background:#F2685F}.bedbtn.s-empty i{background:transparent;border:1px dashed var(--strip-muted);height:4px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--strip-muted);padding-bottom:8px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px}
+
+main{padding-block:20px 48px;display:grid;gap:20px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500;font-size:14px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{border-color:var(--crit);color:var(--crit)}
+.toast{font-size:13px;color:var(--ok)}
+
+/* bed head */
+.bedhead{display:grid;gap:12px}
+.bh-row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between}
+.bh-title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.bh-title h2{font-size:22px;font-weight:700}
+.bh-title .num{color:var(--muted);font-size:14px}
+.carried{font-size:13px;color:var(--muted)}
+.devs{display:flex;flex-wrap:wrap;gap:8px}
+.dev{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 12px 4px 8px;cursor:pointer;font-size:14px;background:var(--surface-2);user-select:none}
+.dev input{accent-color:var(--accent);width:16px;height:16px;margin:0}
+.dev:has(input:checked){background:var(--accent-soft);border-color:var(--accent)}
+.dev.sub{border-style:dashed}
+.sumchips{display:flex;flex-wrap:wrap;gap:6px}
+.sc{font-size:13px;border-radius:6px;padding:2px 9px;border:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+.sc b{font-family:var(--f-num)}
+.sc.ok{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.sc.fail{background:var(--crit-soft);border-color:transparent;color:var(--crit)}
+.sc.todo{background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+.sc.na{color:var(--muted)}
+
+.bedgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:960px){.bedgrid{grid-template-columns:1fr}}
+.col{display:grid;gap:14px}
+.colhead{display:flex;justify-content:space-between;align-items:end;gap:8px;flex-wrap:wrap}
+.colhead h2{font-size:18px;font-weight:700}
+.colhead span{font-size:12px;color:var(--muted)}
+
+.grp{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.grp>header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.grp>header h3{font-size:15.5px;font-weight:700;flex:1}
+.gtag{font-family:var(--f-label);font-weight:700;font-size:15px;width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:var(--ink);color:var(--surface);flex:none}
+.gtag.wide{width:auto;padding:0 8px;font-size:12px;letter-spacing:.04em}
+.gsrc{display:block;font-size:12px;color:var(--muted);font-weight:400}
+.gs{font-size:12.5px;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.gs-ok{background:var(--ok-soft);color:var(--ok)}
+.gs-fail{background:var(--crit-soft);color:var(--crit);font-weight:700}
+.gs-todo{background:var(--warn-soft);color:var(--warn)}
+.gs-na{color:var(--muted);border:1px solid var(--line)}
+
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.grp>header+.item{border-top:0}
+.item-text{display:grid;gap:3px;min-width:0}
+.it{font-weight:500}
+.code{font-family:var(--f-num);font-size:12px;color:var(--muted);margin-right:6px}
+.item small{color:var(--muted);font-size:12.5px;line-height:1.45}
+.item.is-na .it{color:var(--muted)}
+.item.st-n{background:color-mix(in srgb,var(--crit-soft) 55%,transparent)}
+.val{justify-self:start;margin-top:4px;border:1px solid var(--line);background:var(--surface-2);border-radius:7px;padding:4px 8px;font-size:14px;max-width:100%}
+input.val{width:180px}
+.tri{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+.tri button{border:0;background:var(--surface);min-width:44px;padding:7px 8px;cursor:pointer;font-family:var(--f-num);font-size:14px;color:var(--muted)}
+.tri button+button{border-left:1px solid var(--line)}
+.tri button:hover{background:var(--surface-2)}
+.tri button[data-v="y"][aria-pressed="true"]{background:var(--ok);color:var(--surface);font-weight:700}
+.tri button[data-v="n"][aria-pressed="true"]{background:var(--crit);color:var(--surface);font-weight:700}
+.tri button[data-v="na"][aria-pressed="true"]{background:var(--muted);color:var(--surface)}
+.na-txt,.link-txt{font-size:12.5px;color:var(--muted);text-align:right}
+.link-txt b{font-family:var(--f-num)}
+@media (max-width:480px){.item{grid-template-columns:1fr}.na-txt,.link-txt{text-align:left}}
+.grp-foot{display:flex;flex-wrap:wrap;gap:8px 16px;padding:10px 14px;border-top:1px dashed var(--line);font-size:14px;align-items:center}
+.grp-foot label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.grp-foot input{accent-color:var(--crit);width:16px;height:16px}
+.bulk{margin-left:auto}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;font-size:13.5px;text-decoration:underline;text-underline-offset:3px}
+textarea.note{width:100%;min-height:72px;border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:8px 10px;resize:vertical}
+.empty-bed{display:grid;gap:8px;justify-items:start;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+textarea.buf{width:100%;height:140px;border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:8px;font-family:var(--f-num);font-size:12.5px}
+
+/* unit view */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+th{font-family:var(--f-label);font-size:12.5px;letter-spacing:.04em;color:var(--muted);font-weight:600;background:var(--surface-2)}
+td:first-child,th:first-child{text-align:left}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+.c-ok{color:var(--ok);font-weight:700}.c-fail{color:var(--crit);font-weight:700}.c-todo{color:var(--warn)}.c-na{color:var(--muted)}
+.qi td{text-align:right;font-family:var(--f-num)}
+.qi td:first-child{font-family:var(--f-body);text-align:left;white-space:normal;min-width:180px}
+.qi tbody tr{cursor:default}
+.qi .grp-row td{background:var(--surface-2);font-family:var(--f-label);font-weight:600;font-size:12.5px;letter-spacing:.04em;color:var(--muted);text-align:left}
+.sechead{display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.sechead h2{font-size:18px;font-weight:700}
+.sechead .src{font-size:12px;color:var(--muted)}
+.monthctl{display:flex;gap:8px;align-items:center}
+.monthctl input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 8px;font-family:var(--f-num)}
+details.set{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+details.set summary{cursor:pointer;font-weight:700}
+.setgrid{display:grid;gap:12px;margin-top:12px}
+.field{display:grid;gap:4px}
+.field label{font-size:13px;color:var(--muted)}
+.field input{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:7px 10px}
+.confirm{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;color:var(--crit)}
+footer{border-top:1px solid var(--line);padding-top:16px;display:grid;gap:10px;font-size:13px;color:var(--muted)}
+footer ol{margin:0;padding-left:20px;display:grid;gap:3px}
+.disclaimer{background:var(--warn-soft);color:var(--ink);border-radius:10px;padding:10px 14px;font-size:13.5px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="strip">
+  <div class="wrap top">
+    <div class="brand"><h1>ICU 每日查房</h1><p id="unitname"></p></div>
+    <div class="datectl">
+      <button class="sbtn" id="dprev" type="button" aria-label="前一天">‹</button>
+      <input type="date" id="date" aria-label="查房日期">
+      <button class="sbtn" id="dnext" type="button" aria-label="後一天">›</button>
+      <button class="sbtn" id="dtoday" type="button">今天</button>
+    </div>
+    <div class="viewtg" role="group" aria-label="檢視">
+      <button type="button" data-view="bed">床位</button>
+      <button type="button" data-view="unit">單位總覽</button>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="beds-scroll"><div class="beds" id="beds"></div></div>
+    <div class="legend"><span><i style="background:#5CC48E"></i>完整</span><span><i style="background:#F0AA45"></i>未填完</span><span><i style="background:#F2685F"></i>有未執行</span><span><i style="border:1px dashed var(--strip-muted)"></i>今日未記錄或空床</span></div>
+  </div>
+</header>
+
+<div class="wrap">
+<main>
+  <div id="bedview"></div>
+
+  <div id="unitview" hidden>
+    <section>
+      <div class="sechead"><h2 id="day-h">當日全床</h2><span class="src">點選任一列可進入該床</span></div>
+      <div class="tbl-wrap"><table id="daytbl"></table></div>
+    </section>
+
+    <section style="margin-top:24px">
+      <div class="sechead">
+        <h2>月品質指標</h2>
+        <div class="monthctl"><label for="month" class="label">月份</label><input type="month" id="month"></div>
+      </div>
+      <div class="tbl-wrap"><table class="qi" id="qitbl"></table></div>
+      <p style="font-size:12.5px;color:var(--muted);margin-top:8px">組合式照護採「全有或全無」計算：當日所有適用項目都完成（或不適用）才算完整，未填完視為不完整。感染密度需在床位頁勾選「今日新診斷」，並依院內感管收案定義判定。指標名稱與定義請與醫策會 TCPI 及院內感管的定義核對。</p>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn" type="button" id="csv-copy">複製本月 CSV</button>
+        <button class="btn" type="button" id="csv-dl">下載本月 CSV</button>
+        <span class="toast" id="csv-toast" aria-live="polite"></span>
+      </div>
+      <textarea class="buf" id="csv-buf" hidden readonly aria-label="CSV 內容"></textarea>
+    </section>
+
+    <details class="set" style="margin-top:24px">
+      <summary>單位設定與備份</summary>
+      <div class="setgrid">
+        <div class="field"><label for="set-unit">單位名稱</label><input id="set-unit"></div>
+        <div class="field"><label for="set-beds">床號（以逗號或空白分隔）</label><input id="set-beds"></div>
+        <div class="actions"><button class="btn primary" type="button" id="set-save">儲存設定</button><span class="toast" id="set-toast"></span></div>
+        <div class="field"><label for="bk-buf">備份資料（換電腦或瀏覽器時，複製後在新裝置貼上再匯入）</label><textarea class="buf" id="bk-buf"></textarea></div>
+        <div class="actions">
+          <button class="btn" type="button" id="bk-copy">複製全部資料</button>
+          <button class="btn" type="button" id="bk-import">從上方文字匯入</button>
+          <span class="confirm" id="bk-confirm" hidden>匯入會取代目前所有資料？
+            <button class="btn danger" type="button" id="bk-yes">取代</button>
+            <button class="btn" type="button" id="bk-no">取消</button>
+          </span>
+          <span class="toast" id="bk-toast" aria-live="polite"></span>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <footer>
+    <div class="disclaimer"><b>僅供臨床流程輔助與品質監測，不取代臨床判斷。</b>資料只存在這台裝置的瀏覽器，不會上傳；請勿輸入姓名、病歷號等可識別個人資料。組合式照護項目請依院內感管與醫策會最新版本調整。</div>
+    <div>
+      <span class="label">依據</span>
+      <ol>
+        <li>SCCM ICU Liberation Bundle（A–F）；Devlin JW, et al. PADIS Guidelines. <i>Crit Care Med</i> 2018;46:e825–e873，及 2025 focused update。</li>
+        <li>Schmidt GA, et al. Liberation from mechanical ventilation (ATS/ACCP). <i>Am J Respir Crit Care Med</i> 2017;195:115–119。</li>
+        <li>疾病管制署／台灣感染管制學會：侵入性醫療處置組合式照護（VAP 5 項、中心導管置放組合、導尿管照護）。</li>
+        <li>SHEA/IDSA/APIC Compendium of Strategies to Prevent HAIs, 2022 Update（VAP/VAE、CLABSI、CAUTI）。<i>Infect Control Hosp Epidemiol</i> 2022–2023。</li>
+        <li>Compher C, et al. ASPEN/SCCM critical care nutrition 2022；Singer P, et al. ESPEN ICU guideline 2023。</li>
+        <li>SCCM 2024 glycemic control guideline；SCCM/ASHP 2024 stress-related GI bleeding prophylaxis guideline；ASH 2018 VTE prophylaxis。</li>
+      </ol>
+    </div>
+  </footer>
+</main>
+</div>
+
+<script>
+(function(){
+const KEY='icu-rounds-v1';
+const pad=x=>String(x).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const parseD=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+const TODAY=ymd(new Date());
+const defS=()=>({unit:'內科加護病房',beds:Array.from({length:12},(_,i)=>String(i+1)),bed:'1',date:TODAY,view:'bed',month:TODAY.slice(0,7),rec:{}});
+let S;
+try{S=Object.assign(defS(),JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(e){S=defS();}
+S.date=TODAY;S.month=TODAY.slice(0,7);
+if(!Array.isArray(S.beds)||!S.beds.length)S.beds=defS().beds;
+if(!S.beds.includes(S.bed))S.bed=S.beds[0];
+if(!S.rec||typeof S.rec!=='object')S.rec={};
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+
+/* ---------- 項目定義 ---------- */
+const RASS=[['','RASS —'],['+4','+4 好戰'],['+3','+3 非常躁動'],['+2','+2 躁動'],['+1','+1 不安'],['0','0 清醒平靜'],['-1','−1 嗜睡'],['-2','−2 輕度鎮靜'],['-3','−3 中度鎮靜'],['-4','−4 深度鎮靜'],['-5','−5 無法喚醒']];
+const CAM=[['','結果 —'],['neg','陰性'],['pos','陽性（譫妄）'],['utc','無法評估（RASS −4／−5）']];
+const MOB=[['','活動等級 —'],['0','0 被動關節運動'],['1','1 床上主動運動'],['2','2 坐床緣'],['3','3 站立或移位到椅子'],['4','4 原地踏步或行走']];
+const optLabel=(o,v)=>(o.find(x=>x[0]===v)||['',''])[1];
+
+const ABCDEF=[
+ {id:'A',tag:'A',name:'疼痛評估與處置',items:[
+  {id:'a1',t:'每班評估疼痛',h:'可表達用 NRS；無法表達用 CPOT 或 BPS',val:{k:'pain',type:'text',ph:'例：CPOT 2',label:'疼痛分數'}},
+  {id:'a2',t:'疼痛達標，或已調整止痛',h:'CPOT <3、BPS ≤5、NRS <4；先止痛再鎮靜'}]},
+ {id:'B',tag:'B',name:'自發性甦醒與呼吸試驗',items:[
+  {id:'b1',t:'SAT：通過安全篩檢並中止鎮靜',h:'禁忌：癲癇持續、酒精戒斷、躁動、使用肌肉鬆弛劑、心肌缺血、顱內壓升高',when:r=>r.dev.sed,why:'未持續使用鎮靜劑'},
+  {id:'b2',t:'SBT：通過篩檢並執行自發性呼吸試驗',h:'篩檢：FiO₂ ≤0.5、PEEP ≤8、血行動力學穩定、有自發呼吸',when:r=>r.dev.vent,why:'未使用呼吸器'}]},
+ {id:'C',tag:'C',name:'鎮痛與鎮靜的選擇',items:[
+  {id:'c1',t:'設定 RASS 目標並達標',h:'多數病人採淺鎮靜（RASS −2～0）',val:{k:'rass',type:'select',opts:RASS,label:'RASS'}},
+  {id:'c2',t:'避免 benzodiazepine 持續輸注',h:'優先 propofol 或 dexmedetomidine',when:r=>r.dev.sed,why:'未持續使用鎮靜劑'}]},
+ {id:'D',tag:'D',name:'譫妄評估、預防與處置',items:[
+  {id:'d1',t:'每班以 CAM-ICU 或 ICDSC 評估',h:'ICDSC ≥4 為陽性',val:{k:'cam',type:'select',opts:CAM,label:'譫妄評估結果'}},
+  {id:'d2',t:'非藥物預防譫妄',h:'日夜作息與睡眠、眼鏡助聽器、定向感；不建議常規用抗精神病藥物預防'}]},
+ {id:'E',tag:'E',name:'早期活動與運動',items:[
+  {id:'e1',t:'評估安全條件並執行活動',h:'依血行動力學、呼吸與神經狀態逐步進階',val:{k:'mob',type:'select',opts:MOB,label:'活動等級'}}]},
+ {id:'F',tag:'F',name:'家屬參與與賦能',items:[
+  {id:'f1',t:'家屬參與查房，或已更新病情與照護目標'}]}
+];
+ABCDEF.forEach(g=>g.items.forEach(i=>i.code=i.id.toUpperCase()));
+
+const BUNDLES=[
+ {id:'vap',short:'VAP',name:'呼吸器相關肺炎（VAP）組合式照護',dev:'vent',src:'疾管署／台灣感染管制學會 5 項',items:[
+  {id:'v1',t:'床頭抬高 30–45°'},
+  {id:'v2',t:'每日口腔照護',h:'台灣版為 chlorhexidine 口腔照護；SHEA 2022 改建議刷牙、不建議常規 chlorhexidine，依院內規範'},
+  {id:'v3',t:'每日中止鎮靜',link:'b1'},
+  {id:'v4',t:'排空呼吸器管路積水'},
+  {id:'v5',t:'每日評估拔管',link:'b2'}]},
+ {id:'clabsi',short:'CLABSI',name:'中心導管維護組合（CLABSI）',dev:'cvc',src:'疾管署組合式照護；SHEA/IDSA/APIC 2022',items:[
+  {id:'l1',t:'每日評估導管留置必要性',h:'不需要就移除'},
+  {id:'l2',t:'敷料乾燥、完整，依時更換',h:'透明敷料 7 天、紗布 2 天；潮濕、鬆脫或髒污時立即更換'},
+  {id:'l3',t:'接觸前手部衛生，接頭使用前消毒',h:'以酒精或 chlorhexidine 擦拭接頭'},
+  {id:'l4',t:'每日 chlorhexidine 擦澡'}]},
+ {id:'cauti',short:'CAUTI',name:'導尿管照護組合（CAUTI）',dev:'foley',src:'疾管署組合式照護；SHEA/IDSA/APIC 2022',items:[
+  {id:'u1',t:'每日評估留置必要性',h:'不符合適應症就移除'},
+  {id:'u2',t:'維持密閉引流，管路無扭折'},
+  {id:'u3',t:'尿袋低於膀胱且不接觸地面'},
+  {id:'u4',t:'導管妥善固定'},
+  {id:'u5',t:'照護前後手部衛生與會陰清潔'}]}
+];
+const INSERT={id:'ins',short:'CVC 置放',name:'中心導管置放組合',dev:'cvcNew',src:'今日新置放時填寫',items:[
+  {id:'i1',t:'置放前手部衛生'},
+  {id:'i2',t:'最大無菌面防護',h:'帽子、口罩、無菌衣、無菌手套、全身無菌覆蓋'},
+  {id:'i3',t:'以 >0.5% chlorhexidine 酒精消毒皮膚'},
+  {id:'i4',t:'選擇適當部位',h:'成人避免股靜脈；建議超音波導引'}]};
+const DAILY={id:'daily',name:'每日必查',items:[
+  {id:'x1',s:'營養',t:'營養：無禁忌時 24–48 小時內開始腸道營養',h:'ASPEN/SCCM 2022、ESPEN 2023'},
+  {id:'x2',s:'血糖',t:'血糖目標 140–180 mg/dL',h:'SCCM 2024'},
+  {id:'x3',s:'壓力性潰瘍預防',t:'壓力性潰瘍預防只給高風險者',h:'凝血異常、休克、慢性肝病等；無適應症就停（SCCM/ASHP 2024）'},
+  {id:'x4',s:'VTE 預防',t:'VTE 預防：藥物或機械性',h:'無禁忌時優先藥物預防'},
+  {id:'x5',s:'抗生素',t:'抗生素：檢視適應症、培養結果、降階與療程'},
+  {id:'x6',s:'其他管路',t:'其他管路（動脈導管、周邊、鼻胃管）仍有必要'},
+  {id:'x7',s:'皮膚',t:'壓力性損傷評估與翻身'},
+  {id:'x8',s:'照護目標',t:'照護目標與 DNR 狀態已確認'},
+  {id:'x9',s:'轉出評估',t:'評估可否轉出加護病房'}]};
+
+const ALL={};
+[...ABCDEF.flatMap(g=>g.items),...BUNDLES.flatMap(b=>b.items),...INSERT.items,...DAILY.items].forEach(i=>ALL[i.id]=i);
+const SL={ok:'完整',fail:'有未執行',todo:'未填完',na:'不適用'};
+const MK={ok:'✓',fail:'✗',todo:'…',na:'–'};
+
+/* ---------- 紀錄 ---------- */
+const newRec=()=>({occ:true,dev:{vent:false,sed:false,cvc:false,cvcNew:false,foley:false},st:{},val:{},ev:{},note:''});
+const K=(d,b)=>d+'|'+b;
+function prevOf(date,bed){
+  let bd='',best=null;
+  for(const k in S.rec){const i=k.lastIndexOf('|'),d=k.slice(0,i),b=k.slice(i+1);if(b===bed&&d<date&&d>bd){bd=d;best=S.rec[k];}}
+  if(!best)return null;
+  const gap=Math.round((parseD(date)-parseD(bd))/864e5);
+  return gap<=14?{d:bd,r:best}:null;
+}
+let CUR=null,CUR_K='',CARRIED=null;
+function loadCur(){
+  CUR_K=K(S.date,S.bed);
+  if(S.rec[CUR_K]){CUR=S.rec[CUR_K];CARRIED=null;return;}
+  CUR=newRec();CARRIED=null;
+  const p=prevOf(S.date,S.bed);
+  if(p){CUR.occ=p.r.occ;CUR.dev=Object.assign(newRec().dev,p.r.dev,{cvcNew:false});CARRIED=p.d;}
+}
+function touch(){if(!S.rec[CUR_K])S.rec[CUR_K]=CUR;save();}
+
+const applies=(r,it)=>it.link?applies(r,ALL[it.link]):(it.when?it.when(r):true);
+const eff=(r,it)=>!applies(r,it)?'na':it.link?eff(r,ALL[it.link]):(r.st[it.id]||'');
+function gstate(r,items){const v=items.map(i=>eff(r,i));if(v.every(x=>x==='na'))return 'na';if(v.includes('n'))return 'fail';if(v.includes(''))return 'todo';return 'ok';}
+const abcdefOK=r=>ABCDEF.every(g=>['ok','na'].includes(gstate(r,g.items)));
+function bedState(r){
+  if(!r||!r.occ)return 'empty';
+  const gs=[...ABCDEF.map(g=>gstate(r,g.items)),...BUNDLES.filter(b=>r.dev[b.dev]).map(b=>gstate(r,b.items))];
+  if(r.dev.cvcNew)gs.push(gstate(r,INSERT.items));
+  if(gs.includes('fail'))return 'fail';
+  if(gs.includes('todo'))return 'todo';
+  return 'ok';
+}
+
+/* ---------- 床位列 ---------- */
+function renderBeds(){
+  $('#beds').innerHTML=S.beds.map(b=>{
+    const r=S.rec[K(S.date,b)];const s=r?bedState(r):'empty';
+    return `<button type="button" class="bedbtn s-${s}" data-bed="${esc(b)}" aria-current="${S.view==='bed'&&b===S.bed}" aria-label="床 ${esc(b)}：${r?(r.occ?SL[s]||'':'空床'):'今日未記錄'}">${esc(b)}<i></i></button>`;
+  }).join('');
+}
+
+/* ---------- 床位頁 ---------- */
+function itemHTML(r,it){
+  const ap=applies(r,it),v=eff(r,it);
+  let side;
+  if(!ap){const w=it.link?ALL[it.link].why:it.why;side=`<span class="na-txt">不適用${w?'（'+w+'）':''}</span>`;}
+  else if(it.link)side=`<span class="link-txt">同 <b>${ALL[it.link].code}</b> · ${v==='y'?'✓ 完成':v==='n'?'✗ 未執行':v==='na'?'N/A':'未填'}</span>`;
+  else side=`<div class="tri" role="group" aria-label="${esc(it.t)}">${[['y','✓','完成'],['n','✗','未執行'],['na','N/A','不適用']].map(([x,l,a])=>`<button type="button" data-v="${x}" aria-pressed="${v===x}" aria-label="${a}">${l}</button>`).join('')}</div>`;
+  let val='';
+  if(it.val&&ap){
+    const cur=r.val[it.val.k]??'';
+    val=it.val.type==='select'
+      ?`<select class="val" data-k="${it.val.k}" aria-label="${esc(it.val.label)}">${it.val.opts.map(([k,l])=>`<option value="${esc(k)}"${String(cur)===k?' selected':''}>${esc(l)}</option>`).join('')}</select>`
+      :`<input class="val" data-k="${it.val.k}" value="${esc(cur)}" placeholder="${esc(it.val.ph)}" aria-label="${esc(it.val.label)}">`;
+  }
+  return `<div class="item st-${v||'todo'}${ap?'':' is-na'}" data-id="${it.id}"><div class="item-text"><span class="it">${it.code?`<span class="code">${it.code}</span>`:''}${esc(it.t)}</span>${it.h?`<small>${esc(it.h)}</small>`:''}${val}</div>${side}</div>`;
+}
+function grpHTML(r,g,opt={}){
+  const s=gstate(r,g.items);
+  const editable=g.items.some(i=>applies(r,i)&&!i.link);
+  return `<section class="grp" data-g="${g.id}"><header><span class="gtag${opt.wide?' wide':''}">${esc(opt.tag||g.tag)}</span><h3>${esc(g.name)}${g.src?`<span class="gsrc">${esc(g.src)}</span>`:''}</h3><span class="gs gs-${s}">${SL[s]}</span></header>`+
+    g.items.map(i=>itemHTML(r,i)).join('')+
+    ((opt.foot||editable)?`<div class="grp-foot">${opt.foot||''}${editable?`<button type="button" class="linkbtn bulk" data-bulk="${g.id}">其餘項目全部標為完成</button>`:''}</div>`:'')+
+    `</section>`;
+}
+function sumChips(r){
+  const c=[];
+  const n=ABCDEF.filter(g=>['ok','na'].includes(gstate(r,g.items))).length;
+  c.push(`<span class="sc ${n===6?'ok':ABCDEF.some(g=>gstate(r,g.items)==='fail')?'fail':'todo'}">ABCDEF <b>${n}/6</b></span>`);
+  BUNDLES.forEach(b=>{if(r.dev[b.dev]){const s=gstate(r,b.items);c.push(`<span class="sc ${s}">${b.short} ${MK[s]}</span>`);}});
+  if(r.dev.cvcNew){const s=gstate(r,INSERT.items);c.push(`<span class="sc ${s}">CVC 置放 ${MK[s]}</span>`);}
+  const dn=DAILY.items.filter(i=>['y','na'].includes(eff(r,i))).length;
+  c.push(`<span class="sc ${dn===DAILY.items.length?'ok':''}">每日必查 <b>${dn}/${DAILY.items.length}</b></span>`);
+  return c.join('');
+}
+const DEVS=[['vent','呼吸器'],['sed','持續鎮靜'],['cvc','中心導管'],['cvcNew','今日新置放中心導管',true],['foley','導尿管']];
+function renderBed(focus){
+  loadCur();const r=CUR;
+  const d=parseD(S.date);const wd='日一二三四五六'[d.getDay()];
+  let h=`<section class="panel bedhead"><div class="bh-row"><div class="bh-title"><h2>床 ${esc(S.bed)}</h2><span class="num">${S.date}（${wd}）${S.date===TODAY?' · 今天':''}</span></div>
+    <div class="actions"><button class="btn" type="button" id="copysum">複製查房摘要</button><span class="toast" id="sum-toast" aria-live="polite"></span></div></div>
+    ${CARRIED&&!S.rec[CUR_K]?`<p class="carried">已沿用 ${CARRIED} 的在床與管路設定；勾選任一項後才會存成今天的紀錄。</p>`:''}
+    <div class="devs"><label class="dev"><input type="checkbox" data-occ ${r.occ?'checked':''}>有病人</label>
+    ${r.occ?DEVS.filter(([k,,sub])=>!sub||r.dev.cvc).map(([k,l,sub])=>`<label class="dev${sub?' sub':''}"><input type="checkbox" data-dev="${k}" ${r.dev[k]?'checked':''}>${l}</label>`).join(''):''}</div>
+    ${r.occ?`<div class="sumchips">${sumChips(r)}</div>`:''}
+    <textarea class="buf" id="sum-buf" hidden readonly aria-label="查房摘要"></textarea></section>`;
+  if(!r.occ){
+    h+=`<section class="panel empty-bed"><p>此床今日為空床，不列入住院人日與品質指標。</p></section>`;
+  }else{
+    const ev=b=>`<label><input type="checkbox" data-ev="${b.id}" ${r.ev[b.id]?'checked':''}>今日新診斷 ${b.short}（符合收案定義）</label>`;
+    h+=`<div class="bedgrid"><div class="col"><div class="colhead"><h2>ICU Liberation · ABCDEF</h2><span>SCCM PADIS 2018／2025</span></div>`+
+      ABCDEF.map(g=>grpHTML(r,g)).join('')+`</div><div class="col"><div class="colhead"><h2>組合式照護</h2><span>依使用中的管路顯示</span></div>`;
+    const used=BUNDLES.filter(b=>r.dev[b.dev]);
+    if(!used.length)h+=`<section class="panel" style="color:var(--muted);font-size:14px">目前沒有勾選呼吸器、中心導管或導尿管。</section>`;
+    used.forEach(b=>{h+=grpHTML(r,b,{tag:b.short,wide:true,foot:ev(b)});
+      if(b.id==='clabsi'&&r.dev.cvcNew)h+=grpHTML(r,INSERT,{tag:'置放',wide:true});});
+    h+=`<div class="colhead" style="margin-top:6px"><h2>每日必查</h2><span>不列入組合式照護完整率</span></div>`+grpHTML(r,DAILY,{tag:'✓'})+
+      `<section class="panel"><label class="label" for="note">備註</label><textarea class="note" id="note" placeholder="例：今日 SBT 失敗原因、家屬會談重點">${esc(r.note)}</textarea></section></div></div>`;
+  }
+  $('#bedview').innerHTML=h;
+  if(focus){const el=$(`.item[data-id="${focus.id}"] button[data-v="${focus.v}"]`)||$(`[data-dev="${focus.dev}"]`);el&&el.focus();}
+}
+
+$('#bedview').addEventListener('click',e=>{
+  const b=e.target.closest('.tri button');
+  if(b){const id=b.closest('.item').dataset.id,v=b.dataset.v;
+    if(CUR.st[id]===v)delete CUR.st[id];else CUR.st[id]=v;
+    touch();renderBed({id,v});renderBeds();return;}
+  const bulk=e.target.closest('[data-bulk]');
+  if(bulk){const g=[...ABCDEF,...BUNDLES,INSERT,DAILY].find(x=>x.id===bulk.dataset.bulk);
+    g.items.forEach(i=>{if(applies(CUR,i)&&!i.link&&!CUR.st[i.id])CUR.st[i.id]='y';});
+    touch();renderBed();renderBeds();return;}
+  if(e.target.id==='copysum')copyText(summary(CUR),$('#sum-toast'),$('#sum-buf'));
+});
+$('#bedview').addEventListener('change',e=>{
+  const t=e.target;
+  if(t.matches('[data-occ]')){CUR.occ=t.checked;touch();renderBed();renderBeds();}
+  else if(t.matches('[data-dev]')){CUR.dev[t.dataset.dev]=t.checked;if(t.dataset.dev==='cvc'&&!t.checked)CUR.dev.cvcNew=false;touch();renderBed({dev:t.dataset.dev});renderBeds();}
+  else if(t.matches('[data-ev]')){CUR.ev[t.dataset.ev]=t.checked;touch();}
+  else if(t.matches('select.val')){CUR.val[t.dataset.k]=t.value;touch();}
+});
+$('#bedview').addEventListener('input',e=>{
+  const t=e.target;
+  if(t.matches('input.val')){CUR.val[t.dataset.k]=t.value;touch();}
+  else if(t.id==='note'){CUR.note=t.value;touch();}
+});
+
+function summary(r){
+  const L=[`【${S.unit} 床 ${S.bed}】${S.date} 每日查房`];
+  if(!r.occ){L.push('空床');return L.join('\n');}
+  const devs=[r.dev.vent&&'呼吸器',r.dev.sed&&'持續鎮靜',r.dev.cvc&&('中心導管'+(r.dev.cvcNew?'（今日置放）':'')),r.dev.foley&&'導尿管'].filter(Boolean);
+  L.push('管路／設備：'+(devs.join('、')||'無'));
+  L.push('ABCDEF：'+ABCDEF.map(g=>g.tag+MK[gstate(r,g.items)]).join(' '));
+  const v=r.val,det=[v.pain&&('疼痛 '+v.pain),v.rass&&('RASS '+v.rass),v.cam&&('譫妄評估 '+optLabel(CAM,v.cam)),v.mob&&('活動 '+optLabel(MOB,v.mob))].filter(Boolean);
+  if(det.length)L.push(det.join('；'));
+  const miss=items=>items.filter(i=>!['y','na'].includes(eff(r,i))).map(i=>(eff(r,i)==='n'?'✗':'未填 ')+(i.s||i.t));
+  [...BUNDLES.filter(b=>r.dev[b.dev]),...(r.dev.cvcNew?[INSERT]:[])].forEach(b=>{const m=miss(b.items);L.push(`${b.short}：${SL[gstate(r,b.items)]}${m.length?'（'+m.join('、')+'）':''}`);});
+  const dm=miss(DAILY.items);L.push('每日必查：'+(dm.length?dm.join('、'):'全部完成'));
+  const evs=BUNDLES.filter(b=>r.ev[b.id]).map(b=>b.short);if(evs.length)L.push('今日新診斷：'+evs.join('、'));
+  if(r.note)L.push('備註：'+r.note);
+  return L.join('\n');
+}
+function copyText(text,toast,buf){
+  const ok=()=>{toast.textContent='已複製';buf.hidden=true;setTimeout(()=>toast.textContent='',2000);};
+  const fail=()=>{buf.value=text;buf.hidden=false;buf.select();toast.textContent='無法自動複製，請手動複製下方文字';};
+  try{navigator.clipboard.writeText(text).then(ok,fail);}catch(e){fail();}
+}
+
+/* ---------- 單位總覽 ---------- */
+function renderDay(){
+  $('#day-h').textContent=`${S.date} 全床`;
+  const cell=s=>`<td class="c-${s}">${MK[s]}</td>`;
+  let h=`<thead><tr><th>床</th><th>狀態</th><th>管路</th>${ABCDEF.map(g=>`<th>${g.tag}</th>`).join('')}${BUNDLES.map(b=>`<th>${b.short}</th>`).join('')}<th>每日必查</th></tr></thead><tbody>`;
+  S.beds.forEach(b=>{
+    const r=S.rec[K(S.date,b)];
+    if(!r){h+=`<tr data-bed="${esc(b)}"><td class="num">${esc(b)}</td><td class="c-na">未記錄</td><td></td>${'<td class="c-na">–</td>'.repeat(ABCDEF.length+BUNDLES.length+1)}</tr>`;return;}
+    if(!r.occ){h+=`<tr data-bed="${esc(b)}"><td class="num">${esc(b)}</td><td class="c-na">空床</td><td></td>${'<td class="c-na">–</td>'.repeat(ABCDEF.length+BUNDLES.length+1)}</tr>`;return;}
+    const devs=[r.dev.vent&&'呼',r.dev.cvc&&'CVC',r.dev.foley&&'尿'].filter(Boolean).join(' ')||'—';
+    const s=bedState(r);
+    const dn=DAILY.items.filter(i=>['y','na'].includes(eff(r,i))).length;
+    h+=`<tr data-bed="${esc(b)}"><td class="num"><b>${esc(b)}</b></td><td class="c-${s}">${SL[s]}</td><td>${devs}</td>${ABCDEF.map(g=>cell(gstate(r,g.items))).join('')}${BUNDLES.map(bb=>r.dev[bb.dev]?cell(gstate(r,bb.items)):'<td class="c-na">–</td>').join('')}<td class="num">${dn}/${DAILY.items.length}</td></tr>`;
+  });
+  $('#daytbl').innerHTML=h+'</tbody>';
+}
+$('#daytbl').addEventListener('click',e=>{const tr=e.target.closest('tr[data-bed]');if(tr){S.bed=tr.dataset.bed;setView('bed');}});
+
+function monthRecs(ym){return Object.entries(S.rec).filter(([k,r])=>k.startsWith(ym)&&r.occ).map(([k,r])=>{const i=k.lastIndexOf('|');return {d:k.slice(0,i),b:k.slice(i+1),r};});}
+function renderQI(){
+  const rs=monthRecs(S.month).map(x=>x.r),pd=rs.length;
+  const pct=(a,b)=>b?(a/b*100).toFixed(1)+'%':'—';
+  const per=(a,b)=>b?(a/b*1000).toFixed(2)+'‰':'—';
+  const row=(name,num,den,val)=>`<tr><td>${name}</td><td>${num}</td><td>${den}</td><td><b>${val}</b></td></tr>`;
+  let h=`<thead><tr><th>指標</th><th>分子</th><th>分母</th><th>值</th></tr></thead><tbody>`;
+  h+=`<tr class="grp-row"><td colspan="4">組合式照護完整率（全有或全無）</td></tr>`;
+  const ab=rs.filter(abcdefOK).length;
+  h+=row('ABCDEF 完整率',ab+' 人日',pd+' 住院人日',pct(ab,pd));
+  const devDays={};
+  BUNDLES.forEach(b=>{const days=rs.filter(r=>r.dev[b.dev]);devDays[b.id]=days;const ok=days.filter(r=>gstate(r,b.items)==='ok').length;
+    h+=row(b.short+' 組合式照護完整率',ok,days.length+' 使用日',pct(ok,days.length));});
+  const ins=rs.filter(r=>r.dev.cvcNew),insOk=ins.filter(r=>gstate(r,INSERT.items)==='ok').length;
+  h+=row('中心導管置放組合完整率',insOk,ins.length+' 次置放',pct(insOk,ins.length));
+  h+=`<tr class="grp-row"><td colspan="4">導管使用率</td></tr>`;
+  BUNDLES.forEach(b=>{h+=row({vap:'呼吸器',clabsi:'中心導管',cauti:'導尿管'}[b.id]+'使用率',devDays[b.id].length+' 使用日',pd+' 住院人日',pd?(devDays[b.id].length/pd).toFixed(2):'—');});
+  h+=`<tr class="grp-row"><td colspan="4">感染密度（每千導管使用日）</td></tr>`;
+  BUNDLES.forEach(b=>{const ev=devDays[b.id].filter(r=>r.ev[b.id]).length;h+=row(b.short+' 感染密度',ev+' 例',devDays[b.id].length+' 使用日',per(ev,devDays[b.id].length));});
+  const todo=rs.filter(r=>bedState(r)==='todo').length;
+  h+=`<tr class="grp-row"><td colspan="4">資料完整度</td></tr>`+row('未填完的住院人日',todo,pd,pct(todo,pd));
+  $('#qitbl').innerHTML=h+'</tbody>';
+}
+function csv(){
+  const ids=Object.keys(ALL);
+  const head=['日期','床號','呼吸器','持續鎮靜','中心導管','今日置放CVC','導尿管','ABCDEF完整',...ABCDEF.map(g=>g.tag),...BUNDLES.map(b=>b.short),'CVC置放組合','疼痛','RASS','譫妄評估','活動等級',...BUNDLES.map(b=>'新診斷'+b.short),...ids,'備註'];
+  const q=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  const yn=x=>x?1:0;
+  const lines=monthRecs(S.month).sort((a,b)=>a.d.localeCompare(b.d)||a.b.localeCompare(b.b,undefined,{numeric:true})).map(({d,b,r})=>[
+    d,b,yn(r.dev.vent),yn(r.dev.sed),yn(r.dev.cvc),yn(r.dev.cvcNew),yn(r.dev.foley),yn(abcdefOK(r)),
+    ...ABCDEF.map(g=>SL[gstate(r,g.items)]),...BUNDLES.map(bb=>r.dev[bb.dev]?SL[gstate(r,bb.items)]:''),r.dev.cvcNew?SL[gstate(r,INSERT.items)]:'',
+    r.val.pain||'',r.val.rass||'',optLabel(CAM,r.val.cam||'').replace('結果 —',''),optLabel(MOB,r.val.mob||'').replace('活動等級 —',''),
+    ...BUNDLES.map(bb=>yn(r.ev[bb.id])),...ids.map(i=>({y:'Y',n:'N',na:'NA'}[eff(r,ALL[i])]||'')),r.note].map(q).join(','));
+  return [head.map(q).join(','),...lines].join('\n');
+}
+$('#csv-copy').addEventListener('click',()=>copyText(csv(),$('#csv-toast'),$('#csv-buf')));
+$('#csv-dl').addEventListener('click',()=>{
+  try{const blob=new Blob(['﻿'+csv()],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ICU查房_${S.month}.csv`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    $('#csv-toast').textContent='已開始下載；若沒有檔案，請改用「複製本月 CSV」';}catch(e){$('#csv-toast').textContent='此環境無法下載，請改用「複製本月 CSV」';}
+});
+$('#month').addEventListener('change',e=>{if(e.target.value){S.month=e.target.value;save();renderQI();}});
+
+/* 設定與備份 */
+$('#set-save').addEventListener('click',()=>{
+  const u=$('#set-unit').value.trim(),b=$('#set-beds').value.split(/[,，\s]+/).map(x=>x.trim()).filter(Boolean);
+  if(u)S.unit=u;if(b.length){S.beds=[...new Set(b)];if(!S.beds.includes(S.bed))S.bed=S.beds[0];}
+  save();fillSettings();renderAll();$('#set-toast').textContent='已儲存';setTimeout(()=>$('#set-toast').textContent='',2000);
+});
+$('#bk-copy').addEventListener('click',()=>{const t=JSON.stringify({unit:S.unit,beds:S.beds,rec:S.rec});$('#bk-buf').value=t;copyText(t,$('#bk-toast'),$('#bk-buf'));$('#bk-buf').hidden=false;});
+$('#bk-import').addEventListener('click',()=>{$('#bk-confirm').hidden=false;});
+$('#bk-no').addEventListener('click',()=>{$('#bk-confirm').hidden=true;});
+$('#bk-yes').addEventListener('click',()=>{
+  try{const o=JSON.parse($('#bk-buf').value);if(!o||typeof o.rec!=='object')throw 0;
+    S.rec=o.rec;if(Array.isArray(o.beds)&&o.beds.length)S.beds=o.beds;if(o.unit)S.unit=o.unit;if(!S.beds.includes(S.bed))S.bed=S.beds[0];
+    save();fillSettings();renderAll();$('#bk-toast').textContent='已匯入';}
+  catch(e){$('#bk-toast').textContent='格式不正確：請貼上以「複製全部資料」取得的完整文字';}
+  $('#bk-confirm').hidden=true;
+});
+function fillSettings(){$('#set-unit').value=S.unit;$('#set-beds').value=S.beds.join(', ');$('#unitname').textContent=S.unit+' · ABCDEF ＋ 組合式照護';}
+
+/* ---------- 導覽 ---------- */
+function setView(v){S.view=v;save();renderAll();window.scrollTo({top:0});}
+function renderAll(){
+  $$('.viewtg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===S.view));
+  $('#date').value=S.date;
+  $('#bedview').hidden=S.view!=='bed';$('#unitview').hidden=S.view!=='unit';
+  renderBeds();
+  if(S.view==='bed')renderBed();else{renderDay();$('#month').value=S.month;renderQI();}
+}
+$$('.viewtg button').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+$('#beds').addEventListener('click',e=>{const b=e.target.closest('[data-bed]');if(!b)return;S.bed=b.dataset.bed;S.view='bed';save();renderAll();});
+const shift=n=>{const d=parseD(S.date);d.setDate(d.getDate()+n);S.date=ymd(d);S.month=S.date.slice(0,7);renderAll();};
+$('#dprev').addEventListener('click',()=>shift(-1));
+$('#dnext').addEventListener('click',()=>shift(1));
+$('#dtoday').addEventListener('click',()=>{S.date=TODAY;S.month=TODAY.slice(0,7);renderAll();});
+$('#date').addEventListener('change',e=>{if(e.target.value){S.date=e.target.value;S.month=S.date.slice(0,7);renderAll();}});
+
+fillSettings();renderAll();
+})();
+</script>
+</body>
+</html>
