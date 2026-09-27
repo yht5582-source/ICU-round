@@ -57,7 +57,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .viewtg{display:inline-flex;border:1px solid var(--strip-line);border-radius:8px;overflow:hidden}
 .viewtg button{background:transparent;border:0;color:var(--strip-ink);padding:6px 14px;cursor:pointer;font-weight:500}
 .viewtg button[aria-pressed="true"]{background:var(--strip-accent);color:#06201E}
-.beds-scroll{overflow-x:auto;padding-bottom:10px}
+.beds-scroll{overflow-x:auto;padding-bottom:10px;color-scheme:dark}
 .beds{display:flex;gap:6px;width:max-content;min-width:100%}
 .bedbtn{display:grid;justify-items:center;gap:3px;min-width:46px;padding:5px 6px 6px;border-radius:8px;border:1px solid var(--strip-line);background:transparent;color:var(--strip-ink);cursor:pointer;font-family:var(--f-num);font-weight:700;font-size:15px}
 .bedbtn[aria-current="true"]{background:var(--strip-ink);color:var(--strip);border-color:var(--strip-ink)}
@@ -377,6 +377,11 @@ function bedState(r){
   return 'ok';
 }
 
+function hasTodo(r){
+  if(!r||!r.occ)return false;
+  const its=[...ABCDEF.flatMap(g=>g.items),...BUNDLES.filter(b=>r.dev[b.dev]).flatMap(b=>b.items),...(r.dev.cvcNew?INSERT.items:[])];
+  return its.some(i=>eff(r,i)==='');
+}
 /* ---------- 床位列 ---------- */
 function renderBeds(){
   $('#beds').innerHTML=S.beds.map(b=>{
@@ -529,7 +534,7 @@ function renderQI(){
   BUNDLES.forEach(b=>{h+=row({vap:'呼吸器',clabsi:'中心導管',cauti:'導尿管'}[b.id]+'使用率',devDays[b.id].length+' 使用日',pd+' 住院人日',pd?(devDays[b.id].length/pd).toFixed(2):'—');});
   h+=`<tr class="grp-row"><td colspan="4">感染密度（每千導管使用日）</td></tr>`;
   BUNDLES.forEach(b=>{const ev=devDays[b.id].filter(r=>r.ev[b.id]).length;h+=row(b.short+' 感染密度',ev+' 例',devDays[b.id].length+' 使用日',per(ev,devDays[b.id].length));});
-  const todo=rs.filter(r=>bedState(r)==='todo').length;
+  const todo=rs.filter(hasTodo).length;
   h+=`<tr class="grp-row"><td colspan="4">資料完整度</td></tr>`+row('未填完的住院人日',todo,pd,pct(todo,pd));
   $('#qitbl').innerHTML=h+'</tbody>';
 }
